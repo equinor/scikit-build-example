@@ -1,0 +1,40 @@
+# global os and runtime settings
+os: osx
+# travis doesn't suport python on osx, so we let multibuild do that for us
+language: generic
+
+# the global variables are always set. UNICODE_WIDTH is used internally in
+# multibuild
+#
+# the matrix creates a set of 3 build configuration, which maps to python
+# versions. They all run on osx as system, since only the global os setting is
+# used
+env:
+    global:
+        - UNICODE_WIDTH=32
+        - PLAT=x86_64
+    matrix:
+        - MB_PYTHON_VERSION=3.5
+        - MB_PYTHON_VERSION=3.6
+        - MB_PYTHON_VERSION=3.7
+
+before_install:
+    - unset -f pushd # workaround for a quirk in the travis runtime
+    - unset -f popd
+    - git clone https://github.com/matthew-brett/multibuild
+    - source multibuild/common_utils.sh
+    - source multibuild/travis_steps.sh
+    - before_install # set up the environment + python
+
+# install deps and run static analysis (bandit)
+install:
+    - pip install -r requirements-dev.txt
+    - pip install bandit
+    - bandit -r my_package
+
+script:
+    - python setup.py build
+    - python setup.py test
+    - git clean -dxf _skbuild # clean build of the extension for wheel
+    - build_wheel . $PLAT
+    - install_run $PLAT
